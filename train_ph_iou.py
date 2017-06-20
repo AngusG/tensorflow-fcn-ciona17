@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    outpath = os.path.join(args.train_dir, args.save)
+    outpath = os.path.join(args.train_dir, args.sub)
 
     if args.gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu

@@ -9,17 +9,15 @@ import random
 import argparse
 import matplotlib.pyplot as plt
 
-from models.vgg7_fc6_512_deconv import vgg16
-#from models.vgg6_fc6_512_deconv import vgg16
+from models.vgg7_fc6_512_deconv import vgg
+#from models.vgg6_fc6_512_deconv import vgg
 
 from utils import input_pipeline_xent
 from utils import input_pipeline_miou
 from utils import init_3subplot
 from utils import update_plots
 from utils import email_results
-from utils import get_minibatch
-
-from preprocessing.cielab_float_tfrecords import read_filelist
+from utils import get_rgb_minibatch, get_lab_minibatch
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -76,7 +74,7 @@ if __name__ == '__main__':
         '--email', help="should send an email with results when job finished", action="store_true")
 
     args = parser.parse_args()
-    outpath = os.path.join(args.train_dir, args.save)
+    outpath = os.path.join(args.train_dir, args.sub)
 
     if args.gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -85,8 +83,25 @@ if __name__ == '__main__':
     train_path = os.path.join(args.root_path, 'data-train-ciona-16/')
     val_path = os.path.join(args.root_path, 'data-val-ciona-16/')
 
-    t_lumList, t_alphaList, t_betaList, t_segList = read_filelist(train_path)
-    v_lumList, v_alphaList, v_betaList, v_segList = read_filelist(val_path)
+    if args.fmt == 'lab':
+        from utils import read_lab_filelist
+        t_lumList, t_alphaList, t_betaList, t_segList = read_lab_filelist(
+            train_path)
+        v_lumList, v_alphaList, v_betaList, v_segList = read_lab_filelist(
+            val_path)
+
+    elif args.fmt == 'rgb':
+        print('Using rgb format')
+        from utils import read_rgb_filelist
+        t_rgbList, t_segList = read_rgb_filelist(train_path)
+        v_rgbList, v_segList = read_rgb_filelist(val_path)
+        print(len(t_rgbList))
+
+    else:
+        print('Unsupported format -- %s' % args.fmt)
+        sys.exit(1)
+
+    print(len(t_rgbList))
 
     print('args.out = %d' % args.out)
 
@@ -96,8 +111,10 @@ if __name__ == '__main__':
         keep_prob = tf.placeholder(tf.float32)
         mIoU_ph = tf.placeholder(tf.float32)
 
-        p_cielab = tf.placeholder(tf.float32, shape=[None, 224, 224, 3], name='p_cielab')
-        p_mask = tf.placeholder(tf.float32, shape=[None, 224, 224], name='p_mask')
+        p_image = tf.placeholder(
+            tf.float32, shape=[None, 224, 224, 3], name='p_image')
+        p_mask = tf.placeholder(
+            tf.float32, shape=[None, 224, 224], name='p_mask')
 
         print('p_mask shape')
         print(p_mask.get_shape())
@@ -111,8 +128,9 @@ if __name__ == '__main__':
                                     [32, 64, 128, 256, 512, 512],   # vgg#s
                                     [64, 128, 256, 512, 512, 512]])  # vgg
 
-        # This would normally be done in `read_and_decode_xent` part of pipeline
-        cielab = p_cielab * 1.0 / 255.0
+        # This would normally be done in `read_and_decode_xent` part of
+        # pipeline
+        image = p_image * 1.0 / 255.0
 
         '''
         If only two classes, merge classes 0 (other) and 1 (mussel), otherwise do nothing.
@@ -126,11 +144,11 @@ if __name__ == '__main__':
         labels = tf.cast(labels, tf.int32, name='labels_int32')
 
         if args.model == 'xs':
-            vgg = vgg16(args.out, filter_dims_arr[0, :], cielab, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[0, :], image, keep_prob)
         elif args.model == 's':
-            vgg = vgg16(args.out, filter_dims_arr[1, :], cielab, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[1, :], image, keep_prob)
         else:
-            vgg = vgg16(args.out, filter_dims_arr[2, :], cielab, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[2, :], image, keep_prob)
 
         logits = vgg.up
         labels = tf.reshape(labels, [-1])
@@ -156,17 +174,18 @@ if __name__ == '__main__':
 
         total_loss = tf.reduce_mean(cross_entropy, name='x_ent_mean')
 
-        # predictions [int32/int64], labels = [int32/int64], num_classes = [int32]
+        # predictions [int32/int64], labels = [int32/int64], num_classes =
+        # [int32]
         mIOU = tf.contrib.metrics.streaming_mean_iou(
             prediction, labels, args.out)
-        
+
         train_op = tf.train.AdamOptimizer(args.lr).minimize(
             total_loss, global_step=global_step)
 
         '''
         valid_prediction = tf.argmax(tf.reshape(
             tf.nn.softmax(logits), tf.shape(vgg.up)), dimension=3)
-        '''       
+        '''
 
         # Create a saver.
         saver = tf.train.Saver(tf.global_variables())  # v0.12
@@ -178,10 +197,10 @@ if __name__ == '__main__':
         init_locals = tf.local_variables_initializer()  # v0.12
 
         # Start running operations on the Graph.
-        
+
         sess = tf.Session(config=tf.ConfigProto(
             log_device_placement=FLAGS.log_device_placement, gpu_options={'allow_growth': True}))
-        
+
         if args.debug:
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
             sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
@@ -221,14 +240,17 @@ if __name__ == '__main__':
 
                 start_time = time.time()
 
-                mb = get_minibatch(args.bs, t_lumList,
-                                    t_alphaList, t_betaList, t_segList)
+                if args.fmt == 'lab':
+                    mb = get_lab_minibatch(args.bs, t_lumList,
+                                   t_alphaList, t_betaList, t_segList)
+                else:
+                    mb = get_rgb_minibatch(args.bs, t_rgbList, t_segList)
 
                 my_mask = mb[:, :, :, 3]
 
                 _, train_loss, train_summ = sess.run(
                     [train_op, total_loss, training_summary],
-                    feed_dict={keep_prob: 0.5, p_cielab: mb[:, :, :, 0:3], p_mask: my_mask})
+                    feed_dict={keep_prob: 0.5, p_image: mb[:, :, :, 0:3], p_mask: my_mask})
 
                 duration = time.time() - start_time
 
@@ -243,13 +265,14 @@ if __name__ == '__main__':
                     sec_per_batch = float(duration)
 
                     format_str = ('%s: step %d, train=%.5f (%.1f ex/sec)')
-                    print(format_str % (datetime.now(), step, train_loss, examples_per_sec))
-                    
+                    print(format_str %
+                          (datetime.now(), step, train_loss, examples_per_sec))
+
                     summary_writer.add_summary(train_summ, step)
                     #summary_str = sess.run(summary_op)
                     #summary_writer.add_summary(summary_str, step)
                     summary_writer.flush()
-                    
+
                 '''
                 if args.plot:
                     if step % 100 == 0:
@@ -274,9 +297,13 @@ if __name__ == '__main__':
 
                     for k in range(int(num_batches / args.bs)):
 
-                        mb = get_minibatch(
-                            args.bs, v_lumList, v_alphaList, v_betaList, v_segList)
-                        res = sess.run(mIOU, feed_dict={keep_prob: 1.0, p_cielab: mb[
+                        if args.fmt == 'lab':
+                            mb = get_lab_minibatch(
+                                args.bs, v_lumList, v_alphaList, v_betaList, v_segList)
+                        else:
+                            mb = get_rgb_minibatch(args.bs, t_rgbList, t_segList)
+
+                        res = sess.run(mIOU, feed_dict={keep_prob: 1.0, p_image: mb[
                                        :, :, :, 0:3], p_mask: mb[:, :, :, 3]})
 
                         print("i=%d, IoU=%.4f" % (k, res[0]))
@@ -320,4 +347,4 @@ if __name__ == '__main__':
             sess.close()
 
     if args.email:
-        email_results(step, max_valid)  
+        email_results(step, max_valid)

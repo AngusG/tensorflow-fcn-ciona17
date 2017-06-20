@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 
-class vgg16:
+class vgg:
 
     def __init__(self, n_classes, f, imgs=None, keep_prob=None, weights=None, skip_layers=None):
         self.imgs = imgs

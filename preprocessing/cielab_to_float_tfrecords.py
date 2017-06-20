@@ -12,46 +12,7 @@ from tqdm import tqdm
 from natsort import natsorted
 from pprint import pprint
 from PIL import Image
-
-
-def read_filelist(img_path):
-
-    # Q for luminance
-    lumList = [os.path.join(dirpath, f)
-               for dirpath, dirnames, files in os.walk(img_path + 'lum-float/')
-               for f in files if f.endswith('.tiff')]
-    lumList = natsorted(lumList)
-    print("No of lum files: %i" % len(lumList))
-    #lumFiles = tf.train.string_input_producer(lumList, shuffle=False)
-
-    # Q for alpha
-    alphaList = [os.path.join(dirpath, f)
-                 for dirpath, dirnames, files in os.walk(img_path + 'alpha-float/')
-                 for f in files if f.endswith('.tiff')]
-    alphaList = natsorted(alphaList)
-    print("No of alpha files: %i" % len(alphaList))
-    #alphaFiles = tf.train.string_input_producer(alphaList, shuffle=False)
-
-    # Q for beta
-    betaList = [os.path.join(dirpath, f)
-                for dirpath, dirnames, files in os.walk(img_path + 'beta-float/')
-                for f in files if f.endswith('.tiff')]
-    betaList = natsorted(betaList)
-    print("No of beta files: %i" % len(betaList))
-    #betaFiles = tf.train.string_input_producer(betaList, shuffle=False)
-
-    # Q for segmentations - still jpeg
-    segList = [os.path.join(dirpath, f)
-               for dirpath, dirnames, files in os.walk(img_path + 'segmentations/')
-               for f in files if f.endswith('.jpg')]
-    segList = natsorted(segList)
-    print("No of mask files: %i" % len(segList))
-    #segFiles = tf.train.string_input_producer(segList, shuffle=False)
-
-    #return lumFiles, len(lumList), alphaFiles, len(alphaList), betaFiles, len(betaList), segFiles, len(segList)
-    return lumList, alphaList, betaList, segList
-    # return
-    # alphaFiles,len(alphaList),betaFiles,len(betaList),segFiles,len(segList)
+from utils import read_lab_filelist
 
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
@@ -96,7 +57,7 @@ if __name__ == '__main__':
     # read file list from directory into queues
     #lQ, lLen, aQ, aLen, bQ, bLen, sQ, segLen = read_filelist(images_path)
 
-    lumList, alphaList, betaList, segList = read_filelist(images_path)
+    lumList, alphaList, betaList, segList = read_lab_filelist(images_path)
 
     '''
     reader = tf.WholeFileReader()

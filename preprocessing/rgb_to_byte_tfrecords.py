@@ -11,7 +11,7 @@ from pprint import pprint
 import argparse
 
 
-def read_filelist(img_path, seg_path):
+def read_rgb_filelist_to_queues(img_path, seg_path):
 
     imgList = [os.path.join(dirpath, f)
                for dirpath, dirnames, files in os.walk(img_path)

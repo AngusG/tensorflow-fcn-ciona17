@@ -11,6 +11,37 @@ import os
 import socket
 import smtplib
 from email.mime.text import MIMEText
+from natsort import natsorted
+
+
+def build_list(path, ext):
+
+    img_list = [os.path.join(dirpath, f)
+                for dirpath, dirnames, files in os.walk(path)
+                for f in files if f.endswith(ext)]
+    img_list = natsorted(img_list)
+
+    print("No of files: %i" % len(img_list))
+
+    return img_list
+
+
+def read_rgb_filelist(img_path):
+
+    rgb_list = build_list(img_path + 'rgb/', '.jpg')
+    seg_list = build_list(img_path + 'segmentations/', '.jpg')
+
+    return rgb_list, seg_list
+
+
+def read_lab_filelist(img_path):
+
+    lum_list = build_list(img_path + 'lum-float/', '.tiff')
+    alpha_list = build_list(img_path + 'alpha-float/', '.tiff')
+    beta_list = build_list(img_path + 'beta-float/', '.tiff')
+    seg_list = build_list(img_path + 'segmentations/', '.jpg')
+
+    return lum_list, alpha_list, beta_list, seg_list
 
 
 def read_and_decode_lab(filename_queue):
@@ -313,7 +344,7 @@ def update_plots(img_1, img_2, img_3, rgb, predimg, label, batch_size, n_classes
     img_3.set_data(lbl * 255. / n_classes)
 
 
-def get_minibatch(batch_size, lumi_list, alph_list, beta_list, mask_list):
+def get_lab_minibatch(batch_size, lumi_list, alph_list, beta_list, mask_list):
 
     minibatch = np.zeros([batch_size, 224, 224, 4])
 
@@ -334,6 +365,26 @@ def get_minibatch(batch_size, lumi_list, alph_list, beta_list, mask_list):
         minibatch[i, :, :, 3] = mask.copy()
 
     return minibatch
+
+def get_rgb_minibatch(batch_size, rgb_list, mask_list):
+
+    minibatch = np.zeros([batch_size, 224, 224, 4])
+
+    for i in range(batch_size):
+
+        j = random.randint(0, len(rgb_list) - batch_size)
+
+        rgb = plt.imread(rgb_list[j])
+        mask = plt.imread(mask_list[j])
+
+        mask.resize((224, 224))
+
+        minibatch[i, :, :, 0] = np.resize(rgb[:,:,0], (224,224)).copy()
+        minibatch[i, :, :, 1] = np.resize(rgb[:,:,1], (224,224)).copy()
+        minibatch[i, :, :, 2] = np.resize(rgb[:,:,2], (224,224)).copy()
+        minibatch[i, :, :, 3] = mask.copy()
+
+    return minibatch    
 
 
 def email_results(step, max_valid):
