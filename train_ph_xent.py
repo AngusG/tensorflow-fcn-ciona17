@@ -24,9 +24,6 @@ FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 
-tf.app.flags.DEFINE_integer('max_steps', 10000,
-                            """Number of batches to run.""")
-
 tf.app.flags.DEFINE_integer('num_epochs', 15000,
                             """Number of epochs.""")
 
@@ -43,7 +40,7 @@ if __name__ == '__main__':
         Would usually give a unique name (e.g initial learning rate used) so that tensorboard \
         results are more easily interpreted')
     parser.add_argument(
-        '--max_steps', help='maximum number of steps for training', type=int, default=50000)
+        '--max_steps', help='maximum number of steps for training', type=int, default=100000)
     parser.add_argument(
         '--max_patience', help='number of consecutive times validation error is allowed to decrease before stopping', type=int, default=10)
     parser.add_argument(
@@ -242,7 +239,7 @@ if __name__ == '__main__':
 
                 if args.fmt == 'lab':
                     mb = get_lab_minibatch(args.bs, t_lumList,
-                                   t_alphaList, t_betaList, t_segList)
+                                           t_alphaList, t_betaList, t_segList)
                 else:
                     mb = get_rgb_minibatch(args.bs, t_rgbList, t_segList)
 
@@ -301,7 +298,8 @@ if __name__ == '__main__':
                             mb = get_lab_minibatch(
                                 args.bs, v_lumList, v_alphaList, v_betaList, v_segList)
                         else:
-                            mb = get_rgb_minibatch(args.bs, t_rgbList, t_segList)
+                            mb = get_rgb_minibatch(
+                                args.bs, t_rgbList, t_segList)
 
                         res = sess.run(mIOU, feed_dict={keep_prob: 1.0, p_image: mb[
                                        :, :, :, 0:3], p_mask: mb[:, :, :, 3]})

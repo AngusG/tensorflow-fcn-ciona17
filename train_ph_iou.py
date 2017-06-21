@@ -43,7 +43,7 @@ if __name__ == '__main__':
         Would usually give a unique name (e.g initial learning rate used) so that tensorboard \
         results are more easily interpreted')
     parser.add_argument(
-        '--max_steps', help='maximum number of steps for training', type=int, default=50000)
+        '--max_steps', help='maximum number of steps for training', type=int, default=100000)
     parser.add_argument(
         '--max_patience', help='number of consecutive times validation error is allowed to decrease before stopping', type=int, default=10)
     parser.add_argument(

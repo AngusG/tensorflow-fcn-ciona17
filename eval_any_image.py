@@ -9,7 +9,7 @@ import argparse
 
 import matplotlib.pyplot as plt
 
-from models.vgg7_fc6_512_deconv import vgg16
+from models.vgg7_fc6_512_deconv import vgg
 
 from utils import input_pipeline_xent, input_pipeline_miou, init_3subplot, update_plots
 
@@ -39,9 +39,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--model', help='the model variant (should match checkpoint otherwise will crash)', default='')
     parser.add_argument(
-        '--savepath', default='/export/mlrg/gallowaa/Documents/conf/tensorflow-fcn-ciona17/')
+        '--savepath', default='/export/mlrg/gallowaa/Documents/conf/tensorflow-fcn-ciona17/samples')
     parser.add_argument(
-        '--plot', help='periodically plot validation progress during training', action="store_true")
+        '--show', help='show the image or just save directly to file', action="store_true")
 
     args = parser.parse_args()
 
@@ -67,11 +67,11 @@ if __name__ == '__main__':
                                     [64, 128, 256, 512, 512, 512]]) # vgg#
 
         if args.model == 'xs':
-            vgg = vgg16(args.out, filter_dims_arr[0, :], rgb, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[0, :], rgb, keep_prob)
         elif args.model == 's':
-            vgg = vgg16(args.out, filter_dims_arr[1, :], rgb, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[1, :], rgb, keep_prob)
         else:
-            vgg = vgg16(args.out, filter_dims_arr[2, :], rgb, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[2, :], rgb, keep_prob)
 
         logits = vgg.up
         logits = tf.reshape(logits, [-1])
@@ -103,9 +103,6 @@ if __name__ == '__main__':
 
         print('Running the Network')
 
-        num_batches = 334
-        miou_list = np.zeros(int(num_batches / FLAGS.batch_size))
-
         step = sess.run(global_step)
         print(step)
 
@@ -113,13 +110,16 @@ if __name__ == '__main__':
 
         predimg = sess.run(prediction, feed_dict={keep_prob: 1.0, p_rgb: image})
 
+        print(step)
+
+        predimg = predimg.reshape(1, image.shape[0], image.shape[1], args.out)
+        
+        #img2 = np.asarray(predimg[0,:,:,0])
+        #img2 = np.squeeze(predimg[0,:,:,0])
+        
+        fname =  os.path.join(args.savepath + os.path.basename(args.image)[:-4]) + '_step_' + str(step) + '.png'
+        #plt.imsave(fname, img2)
+
         if args.plot:
-
-            print(step)
-
-            predimg = predimg.reshape(1, image.shape[0], image.shape[1], 1)
-            img2 = np.asarray(predimg)
-            img2 = np.squeeze(predimg)
-            
-            fname =  os.path.join(args.savepath + os.path.basename(args.image)[:-4]) + '_step_' + str(step) + '.png'
-            plt.imsave(fname, img2)
+            plt.imshow(predimg[0,:,:,1])
+            plt.show()
