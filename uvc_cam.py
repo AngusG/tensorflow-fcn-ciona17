@@ -1,3 +1,4 @@
+import cv2
 import tensorflow as tf
 import numpy as np
 import os
@@ -24,8 +25,8 @@ tf.app.flags.DEFINE_integer('batch_size', 1,
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'image', help='path to image to segment')
+    '''parser.add_argument(
+        'image', help='path to image to segment')'''
     parser.add_argument(
         '--path', help='path to checkpoints folder')
     parser.add_argument(
@@ -42,12 +43,12 @@ if __name__ == '__main__':
         '--savepath', default='/export/mlrg/gallowaa/Documents/conf/tensorflow-fcn-ciona17/samples')
     parser.add_argument(
         '--show', help='show the image or just save directly to file', action="store_true")
-
+    parser.add_argument(
+        '--cam_index', help='camera index from /dev/video*', type=int, default=0)
     args = parser.parse_args()
 
     if args.gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-
 
     with tf.Graph().as_default():
 
@@ -64,7 +65,7 @@ if __name__ == '__main__':
 
         filter_dims_arr = np.array([[16, 32, 64, 128, 256, 512],    # vgg#xs
                                     [32, 64, 128, 256, 512, 512],   # vgg#s
-                                    [64, 128, 256, 512, 512, 512]]) # vgg#
+                                    [64, 128, 256, 512, 512, 512]])  # vgg#
 
         if args.model == 'xs':
             vgg = vgg(args.out, filter_dims_arr[0, :], rgb, keep_prob)
@@ -95,29 +96,34 @@ if __name__ == '__main__':
         sess.run([init, init_locals])
 
         if args.restore:
-            print('Restoring the network from %s' % os.path.join(args.path, args.restore))
-            saver.restore(sess, tf.train.latest_checkpoint(os.path.join(args.path, args.restore)))
-        else:    
+            print('Restoring the network from %s' %
+                  os.path.join(args.path, args.restore))
+            saver.restore(sess, tf.train.latest_checkpoint(
+                os.path.join(args.path, args.restore)))
+        else:
             print('Restoring the network from path %s' % args.path)
             saver.restore(sess, tf.train.latest_checkpoint(args.path))
 
         step = sess.run(global_step)
         print('Running network trained to step %d' % step)
 
-        image = plt.imread(args.image)
+        #image = plt.imread(args.image)
+        cap = cv2.VideoCapture(args.cam_index)
 
-        predimg = sess.run(prediction, feed_dict={keep_prob: 1.0, p_rgb: image})
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+            if ret == True:
+                cv2.imshow('frame', frame)
+                predimg = sess.run(prediction, feed_dict={
+                           keep_prob: 1.0, p_rgb: frame}) # may need to convert to rgb from bgr
+                predimg = predimg.reshape(1, frame.shape[0], frame.shape[1], args.out)
+                plt.imshow(predimg[0, :, :, 1])
+                plt.pause(0.1)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            else:
+                break
 
-        print(step)
-
-        predimg = predimg.reshape(1, image.shape[0], image.shape[1], args.out)
-        
-        #img2 = np.asarray(predimg[0,:,:,0])
-        #img2 = np.squeeze(predimg[0,:,:,0])
-        
-        fname =  os.path.join(args.savepath + os.path.basename(args.image)[:-4]) + '_step_' + str(step) + '.png'
-        #plt.imsave(fname, img2)
-
-        if args.plot:
-            plt.imshow(predimg[0,:,:,1])
-            plt.show()
+        # Release everything if job is finished
+        cap.release()
+        cv2.destroyAllWindows()
