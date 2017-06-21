@@ -109,6 +109,8 @@ if __name__ == '__main__':
 
         #image = plt.imread(args.image)
         cap = cv2.VideoCapture(args.cam_index)
+        ret = cap.set(3,320) 
+        ret = cap.set(4,240)
 
         while(cap.isOpened()):
             ret, frame = cap.read()
