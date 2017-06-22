@@ -43,6 +43,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--show', help='show the image or just save directly to file', action="store_true")
     parser.add_argument(
+        '--allow_growth', help='allow gpu memory growth', action="store_true")
+    parser.add_argument(
         '--runs', help='how many forward passes to run for benchmarking', type=int, default=5)
 
     args = parser.parse_args()
@@ -89,8 +91,13 @@ if __name__ == '__main__':
         # Start running operations on the Graph.
         # allow_growth - Grow memory usage as needed
         # log_device_placement - To find out which devices your operations and tensors are assigned to
-        sess = tf.Session(config=tf.ConfigProto(
-            log_device_placement=FLAGS.log_device_placement, gpu_options={'allow_growth': True}))
+        if args.allow_growth:
+            allow_growth = True
+        else:
+            allow_growth = False
+
+        sess = tf.Session(config=tf.ConfigProto(gpu_options={'allow_growth': allow_growth}))
+        #    log_device_placement=FLAGS.log_device_placement, gpu_options={'allow_growth': allow_growth}))
 
         sess.run([init, init_locals])
 
