@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-import os.path
+#import os.path
 from datetime import datetime
 import time
 import random
@@ -9,8 +9,8 @@ import argparse
 
 import matplotlib.pyplot as plt
 
+from skimage import util
 from models.vgg7_fc6_512_deconv import vgg
-
 from utils import input_pipeline_xent, input_pipeline_miou, init_3subplot, update_plots
 
 FLAGS = tf.app.flags.FLAGS
@@ -27,6 +27,8 @@ if __name__ == '__main__':
     parser.add_argument(
         'image', help='path to image to segment')
     parser.add_argument(
+        '--ds', help='down sample factor', type=int, default=1)
+    parser.add_argument(
         '--path', help='path to checkpoints folder')
     parser.add_argument(
         '--restore', help='specific checkpoint to use (e.g model.ckpt-99000), otherwise use latest')
@@ -39,9 +41,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--model', help='the model variant (should match checkpoint otherwise will crash)', default='')
     parser.add_argument(
-        '--savepath', default='/export/mlrg/gallowaa/Documents/conf/tensorflow-fcn-ciona17/samples')
-    parser.add_argument(
         '--show', help='show the image or just save directly to file', action="store_true")
+    parser.add_argument(
+        '--runs', help='how many forward passes to run for benchmarking', type=int, default=5)
 
     args = parser.parse_args()
 
@@ -89,6 +91,8 @@ if __name__ == '__main__':
         init_locals = tf.local_variables_initializer()  # v0.12
 
         # Start running operations on the Graph.
+        # allow_growth - Grow memory usage as needed
+        # log_device_placement - To find out which devices your operations and tensors are assigned to
         sess = tf.Session(config=tf.ConfigProto(
             log_device_placement=FLAGS.log_device_placement, gpu_options={'allow_growth': True}))
 
@@ -104,20 +108,34 @@ if __name__ == '__main__':
         step = sess.run(global_step)
         print('Running network trained to step %d' % step)
 
-        image = plt.imread(args.image)
-
-        predimg = sess.run(prediction, feed_dict={keep_prob: 1.0, p_rgb: image})
-
-        print(step)
-
-        predimg = predimg.reshape(1, image.shape[0], image.shape[1], args.out)
-        
-        #img2 = np.asarray(predimg[0,:,:,0])
-        #img2 = np.squeeze(predimg[0,:,:,0])
-        
-        fname =  os.path.join(args.savepath + os.path.basename(args.image)[:-4]) + '_step_' + str(step) + '.png'
-        #plt.imsave(fname, img2)
-
-        if args.plot:
-            plt.imshow(predimg[0,:,:,1])
+        img = plt.imread(args.image)[::args.ds, ::args.ds]
+        print(img.shape)
+        if args.show:
+            plt.imshow(img)
             plt.show()
+            plt.figure()
+
+        trials = np.zeros(args.runs)
+
+        for i in range(args.runs):
+
+            m = np.ones((img.shape[0], img.shape[1]))
+            r = np.random.randn(img.shape[0], img.shape[1])
+            m[r > 3] = 0
+
+            for j in range(img.shape[2]):
+                img[:,:,j] = m * img[:,:,j]
+
+            start_time = time.time()
+            predimg = sess.run(prediction, feed_dict={keep_prob: 1.0, p_rgb: img})
+            trials[i] = time.time() - start_time
+
+            print('Forward pass %d took %f' % (i, trials[i]))
+
+            predimg = predimg.reshape(1, img.shape[0], img.shape[1], args.out)
+
+            if args.show:
+                plt.imshow(predimg[0,:,:,1])
+                plt.pause(0.1)
+
+        print('Average of %d forward passes took %f, std %f' % (args.runs, np.mean(trials), np.std(trials)))
