@@ -9,7 +9,7 @@ import argparse
 
 import matplotlib.pyplot as plt
 
-from skimage import util
+#from skimage import util
 from models.vgg7_fc6_512_deconv import vgg
 from utils import input_pipeline_xent, input_pipeline_miou, init_3subplot, update_plots
 
