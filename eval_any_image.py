@@ -138,4 +138,4 @@ if __name__ == '__main__':
                 plt.imshow(predimg[0,:,:,1])
                 plt.pause(0.1)
 
-        print('Average of %d forward passes took %f, std %f' % (args.runs, np.mean(trials), np.std(trials)))
+        print('Average of %d forward passes took %f, std %f' % (args.runs, np.mean(trials[1:]), np.std(trials[1:])))
