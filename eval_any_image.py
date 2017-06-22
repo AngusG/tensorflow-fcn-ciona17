@@ -76,11 +76,7 @@ if __name__ == '__main__':
             vgg = vgg(args.out, filter_dims_arr[2, :], rgb, keep_prob)
 
         logits = vgg.up
-        logits = tf.reshape(logits, [-1])
 
-        # binarize the network output
-
-        #prediction = tf.greater_equal(logits, 0.5)
         prediction = tf.cast(tf.greater_equal(
             logits, 0.5, name='thresh'), tf.int32)
 
