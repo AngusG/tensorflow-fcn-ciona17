@@ -28,8 +28,8 @@ def build_list(path, ext):
 
 def read_rgb_filelist(img_path):
 
-    rgb_list = build_list(img_path + 'rgb/', '.jpg')
-    seg_list = build_list(img_path + 'segmentations/', '.jpg')
+    rgb_list = build_list(img_path + 'images/', '.jpg')
+    seg_list = build_list(img_path + 'masks/', '.jpg')
 
     return rgb_list, seg_list
 

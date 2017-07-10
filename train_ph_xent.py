@@ -66,6 +66,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '--root_path', help="path to images", default="/export/mlrg/gallowaa/Documents/ciona-net/data/")
     parser.add_argument(
+        '--train', help="path to training images", default="ciona17_farm1_training1/")
+    parser.add_argument(
+        '--valid', help="path to validation images", default="ciona17_farm1_validation/")
+    parser.add_argument(
         '--debug', help="run with tfdbg", action="store_true")
     parser.add_argument(
         '--email', help="should send an email with results when job finished", action="store_true")
@@ -77,8 +81,8 @@ if __name__ == '__main__':
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     # Get list of training and validation images
-    train_path = os.path.join(args.root_path, 'data-train-ciona-16/')
-    val_path = os.path.join(args.root_path, 'data-val-ciona-16/')
+    train_path = os.path.join(args.root_path, args.train)
+    val_path = os.path.join(args.root_path, args.valid)
 
     if args.fmt == 'lab':
         from utils import read_lab_filelist
