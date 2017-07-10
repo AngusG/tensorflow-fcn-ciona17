@@ -9,14 +9,14 @@ import argparse
 
 import matplotlib.pyplot as plt
 
-#from models.vgg7s_fc6_512_deconv_multi import vgg16
-#from models.vgg7xs_fc6_512_deconv_multi import vgg16
-#from models.vgg12xs_fc6_512_deconv_multi import vgg16
-#from models.vgg12_fc6_512_deconv_multi import vgg16
-#from models.vgg7_fc6_512_deconv_multi import vgg16
+#from models.vgg7s_fc6_512_deconv_multi import vgg
+#from models.vgg7xs_fc6_512_deconv_multi import vgg
+#from models.vgg12xs_fc6_512_deconv_multi import vgg
+#from models.vgg12_fc6_512_deconv_multi import vgg
+#from models.vgg7_fc6_512_deconv_multi import vgg
 
-from models.vgg7_fc6_512_deconv import vgg16
-#from models.vgg6_fc6_512_deconv import vgg16
+from models.vgg7_fc6_512_deconv import vgg
+#from models.vgg6_fc6_512_deconv import vgg
 
 from utils import input_pipeline_xent
 from utils import input_pipeline_miou
@@ -108,13 +108,13 @@ if __name__ == '__main__':
                                     [64, 128, 256, 512, 512, 512]])  # vgg
 
         if args.model == 'xs':
-            vgg = vgg16(args.out, filter_dims_arr[0, :], images_ph, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[0, :], images_ph, keep_prob)
         elif args.model == 's':
-            vgg = vgg16(args.out, filter_dims_arr[1, :], images_ph, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[1, :], images_ph, keep_prob)
         else:
-            vgg = vgg16(args.out, filter_dims_arr[2, :], images_ph, keep_prob)
+            vgg = vgg(args.out, filter_dims_arr[2, :], images_ph, keep_prob)
 
-        #vgg = vgg16(args.out, images_ph, keep_prob)
+        #vgg = vgg(args.out, images_ph, keep_prob)
 
         logits = vgg.up
 
