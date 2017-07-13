@@ -9,7 +9,8 @@ import random
 import argparse
 import matplotlib.pyplot as plt
 
-from models.vgg7_fc6_512_deconv import vgg
+from models.vgg16_orig_fcn import vgg
+#from models.vgg7_fc6_512_deconv import vgg
 #from models.vgg6_fc6_512_deconv import vgg
 
 from utils import input_pipeline_xent
@@ -332,8 +333,8 @@ if __name__ == '__main__':
                 prv_miou = curr_miou
 
                 # Save the model checkpoint periodically.
-                if step % 5000 == 0 and step > 0:
-                    checkpoint_path = os.path.join(outpath, 'model.ckpt')
+                if step % 1000 == 0 and step > 0:
+                    checkpoint_path = os.path.join(outpath, 'model_vgg16.ckpt')
                     saver.save(sess, checkpoint_path, global_step=step)
 
                 step += 1
